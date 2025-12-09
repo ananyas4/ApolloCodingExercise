@@ -1,14 +1,14 @@
 """Main FastAPI app."""
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import List
+from sqlalchemy.orm import Session
 
 from app.database import get_db, init_db, is_production
 from app.models import Vehicle
-from app.schemas import VehicleCreate, VehicleUpdate, VehicleResponse
+from app.schemas import VehicleCreate, VehicleResponse, VehicleUpdate
 
 app = FastAPI(title="Vehicle API", version="1.0.0")
 
@@ -30,19 +30,17 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
         # Handle malformed JSON
         if err["type"] == "json_invalid":
             return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={"detail": "Invalid JSON format"}
+                status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "Invalid JSON format"}
             )
-        
+
         # Build field path
         field_path = ".".join(str(loc) for loc in err["loc"] if loc != "body")
         if not field_path:
             field_path = "body"
         error_dict[field_path] = err["msg"]
-    
+
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"errors": error_dict}
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"errors": error_dict}
     )
 
 
@@ -50,8 +48,7 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
 async def handle_value_error(request: Request, exc: ValueError):
     """Catch value errors."""
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"errors": {"detail": str(exc)}}
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"errors": {"detail": str(exc)}}
     )
 
 
@@ -60,7 +57,7 @@ def _normalize_vin(vin: str) -> str:
     return vin.upper().strip()
 
 
-@app.get("/vehicle", response_model=List[VehicleResponse])
+@app.get("/vehicle", response_model=list[VehicleResponse])
 def list_vehicles(db: Session = Depends(get_db)):
     """Get all vehicles."""
     return db.query(Vehicle).all()
@@ -70,15 +67,15 @@ def list_vehicles(db: Session = Depends(get_db)):
 def create_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db)):
     """Create a new vehicle."""
     vin_upper = _normalize_vin(vehicle.vin)
-    
+
     # Check for duplicates
     existing = db.query(Vehicle).filter(Vehicle.vin == vin_upper).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"errors": {"vin": "Vehicle with this VIN already exists"}}
+            detail={"errors": {"vin": "Vehicle with this VIN already exists"}},
         )
-    
+
     # Create the vehicle
     new_vehicle = Vehicle(
         vin=vin_upper,
@@ -88,20 +85,20 @@ def create_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db)):
         model_name=vehicle.model_name,
         model_year=vehicle.model_year,
         purchase_price=vehicle.purchase_price,
-        fuel_type=vehicle.fuel_type
+        fuel_type=vehicle.fuel_type,
     )
-    
+
     try:
         db.add(new_vehicle)
         db.commit()
         db.refresh(new_vehicle)
         return new_vehicle
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"errors": {"vin": "Vehicle with this VIN already exists"}}
-        )
+            detail={"errors": {"vin": "Vehicle with this VIN already exists"}},
+        ) from e
 
 
 @app.get("/vehicle/{vin}", response_model=VehicleResponse)
@@ -109,13 +106,10 @@ def get_vehicle(vin: str, db: Session = Depends(get_db)):
     """Get a vehicle by VIN."""
     vin_upper = _normalize_vin(vin)
     vehicle = db.query(Vehicle).filter(Vehicle.vin == vin_upper).first()
-    
+
     if not vehicle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vehicle not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+
     return vehicle
 
 
@@ -124,28 +118,25 @@ def update_vehicle(vin: str, vehicle_update: VehicleUpdate, db: Session = Depend
     """Update a vehicle by VIN."""
     vin_upper = _normalize_vin(vin)
     vehicle = db.query(Vehicle).filter(Vehicle.vin == vin_upper).first()
-    
+
     if not vehicle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vehicle not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+
     # Only update fields that were provided
     updates = vehicle_update.model_dump(exclude_unset=True)
     for key, val in updates.items():
         setattr(vehicle, key, val)
-    
+
     try:
         db.commit()
         db.refresh(vehicle)
         return vehicle
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"errors": {"vin": "Update would violate unique constraint"}}
-        )
+            detail={"errors": {"vin": "Update would violate unique constraint"}},
+        ) from e
 
 
 @app.delete("/vehicle/{vin}", status_code=status.HTTP_204_NO_CONTENT)
@@ -153,14 +144,10 @@ def delete_vehicle(vin: str, db: Session = Depends(get_db)):
     """Delete a vehicle by VIN."""
     vin_upper = _normalize_vin(vin)
     vehicle = db.query(Vehicle).filter(Vehicle.vin == vin_upper).first()
-    
+
     if not vehicle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vehicle not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
+
     db.delete(vehicle)
     db.commit()
     return None
-

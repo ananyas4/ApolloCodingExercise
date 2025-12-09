@@ -3,9 +3,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.main import app
+
 from app.database import Base, get_db
-from app.models import Vehicle
+from app.main import app
 
 # Create test database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_vehicles.db"
@@ -44,7 +44,7 @@ def sample_vehicle():
         "model_name": "Accord",
         "model_year": 2020,
         "purchase_price": 25000.00,
-        "fuel_type": "Gasoline"
+        "fuel_type": "Gasoline",
     }
 
 
@@ -155,9 +155,7 @@ def test_delete_nonexistent_vehicle(client):
 def test_malformed_json(client):
     """Test handling of malformed JSON."""
     response = client.post(
-        "/vehicle",
-        data="not json",
-        headers={"Content-Type": "application/json"}
+        "/vehicle", data="not json", headers={"Content-Type": "application/json"}
     )
     assert response.status_code == 400 or response.status_code == 422
 
@@ -166,7 +164,7 @@ def test_validation_errors_missing_fields(client):
     """Test validation errors for missing required fields."""
     incomplete_vehicle = {
         "vin": "1HGBH41JXMN109186",
-        "manufacturer_name": "Honda"
+        "manufacturer_name": "Honda",
         # Missing other required fields
     }
     response = client.post("/vehicle", json=incomplete_vehicle)
@@ -184,7 +182,7 @@ def test_validation_errors_invalid_data(client):
         "model_name": "Accord",
         "model_year": 1800,  # Invalid: too old
         "purchase_price": -1000.00,  # Invalid: negative
-        "fuel_type": "Gasoline"
+        "fuel_type": "Gasoline",
     }
     response = client.post("/vehicle", json=invalid_vehicle)
     assert response.status_code == 422
@@ -202,16 +200,15 @@ def test_multiple_vehicles(client, sample_vehicle):
     """Test handling multiple vehicles."""
     # Create first vehicle
     client.post("/vehicle", json=sample_vehicle)
-    
+
     # Create second vehicle
     vehicle2 = sample_vehicle.copy()
     vehicle2["vin"] = "2HGBH41JXMN109187"
     vehicle2["manufacturer_name"] = "Toyota"
     client.post("/vehicle", json=vehicle2)
-    
+
     # Get all vehicles
     response = client.get("/vehicle")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
-

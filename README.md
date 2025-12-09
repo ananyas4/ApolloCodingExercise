@@ -198,8 +198,20 @@ Returned when a vehicle with the specified VIN is not found.
    ```bash
    poetry run python setup_db.py
    ```
-   
+
    This will create the `vehicles` database and all required tables.
+
+4. **Set up pre-commit hooks** (optional but recommended):
+   ```bash
+   poetry run pre-commit install
+   ```
+
+   This will install git hooks that run automatically before each commit to:
+   - Run unit tests
+   - Check code linting
+   - Verify docstrings
+   - Format code
+   - Check for common issues
 
 ## Running the Application
 
@@ -229,7 +241,7 @@ The application uses PostgreSQL only. For local development, it automatically co
    ```bash
    # On macOS
    brew services start postgresql
-   
+
    # On Linux
    sudo systemctl start postgresql
    ```
@@ -269,6 +281,35 @@ pytest
 For verbose output:
 ```bash
 poetry run pytest -v
+```
+
+## Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality before commits. The hooks will:
+
+- ✅ Run all unit tests (must pass)
+- ✅ Check code linting with ruff (must pass)
+- ✅ Verify docstrings with pydocstyle (must pass)
+- ✅ Format code automatically
+- ✅ Check for common issues (trailing whitespace, large files, etc.)
+
+**Setup:**
+```bash
+poetry run pre-commit install
+```
+
+**Run manually:**
+```bash
+# Run on all files
+poetry run pre-commit run --all-files
+
+# Run on staged files only
+poetry run pre-commit run
+```
+
+**Skip hooks (not recommended):**
+```bash
+git commit --no-verify
 ```
 
 ## Example Usage
@@ -334,4 +375,3 @@ The application uses SQLite for simplicity. The database file (`vehicles.db`) is
 - VIN uniqueness is enforced case-insensitively
 - All numeric fields are validated (e.g., horse_power > 0, purchase_price > 0)
 - Model year must be between 1900 and 2100
-

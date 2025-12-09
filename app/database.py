@@ -1,5 +1,6 @@
 """Database setup and connection handling."""
 import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -28,4 +29,3 @@ def get_db():
 def init_db():
     """Create tables if they don't exist."""
     Base.metadata.create_all(bind=engine)
-

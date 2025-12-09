@@ -5,3 +5,6 @@ pydantic==2.5.0
 pytest==7.4.3
 httpx==0.25.2
 psycopg2-binary==2.9.9
+pre-commit==3.8.0
+ruff==0.1.15
+pydocstyle==6.3.0
